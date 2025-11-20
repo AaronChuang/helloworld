@@ -8,7 +8,6 @@ import HelloWorld from './components/HelloWorld.vue'
 const isAuthenticated = ref(false)
 const username = ref('')
 const isReady = ref(false)
-// 新增：用來追蹤是否正在進行互動 (Login/Logout)
 const isLoading = ref(false)
 let msalInstance = null
 
@@ -17,10 +16,10 @@ onMounted(async () => {
   try {
     msalInstance = await PublicClientApplication.createPublicClientApplication(msalConfig)
 
-    await msalInstance.handleRedirectPromise()
-    const activeAccount = msalInstance.getActiveAccount()
-    if (activeAccount) {
-      handleLoginSuccess(activeAccount)
+    const response = await msalInstance.handleRedirectPromise()
+
+    if (response) {
+      handleLoginSuccess(response.account)
     } else {
       const accounts = msalInstance.getAllAccounts()
       if (accounts.length > 0) {
@@ -28,7 +27,7 @@ onMounted(async () => {
       }
     }
   } catch (error) {
-    console.error("MSAL 初始化失敗:", error)
+    console.error("MSAL 初始化或處理 Redirect 失敗:", error)
   } finally {
     isReady.value = true
   }
@@ -36,28 +35,29 @@ onMounted(async () => {
 
 // 處理登入成功狀態
 const handleLoginSuccess = (account) => {
+  if (!account) return
   msalInstance.setActiveAccount(account)
   isAuthenticated.value = true
   username.value = account.name || account.username
   isLoading.value = false
+
+  // 清理網址上的雜訊 (通常 MSAL 會自己清，但保留這行也無妨)
   if (window.location.hash.includes("code=")) {
     window.history.replaceState({}, document.title, window.location.pathname)
   }
 }
 
-// 登入功能 (彈跳視窗)
+// 登入功能
 const login = async () => {
   if (!msalInstance || isLoading.value) return
-  
+
   isLoading.value = true // 開始 Loading
 
   try {
-    const response = await msalInstance.loginPopup(loginRequest)
-    handleLoginSuccess(response.account)
-
+    await msalInstance.loginRedirect(loginRequest)
   } catch (error) {
-    console.error("登入失敗:", error)
-    isLoading.value = false // 失敗也要關閉 Loading
+    console.error("導向登入失敗:", error)
+    isLoading.value = false // 只有失敗才需要手動關閉 Loading，成功的話頁面就跳轉了
   }
 }
 
