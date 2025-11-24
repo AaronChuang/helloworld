@@ -53,17 +53,8 @@ const login = async () => {
 
   isLoading.value = true // 開始 Loading
 
-  const tenantDomainName = "rita123.onmicrosoft.com";
-
-  const requestWithHint = {
-    ...loginRequest,
-    extraQueryParameters: {
-      domain_hint: tenantDomainName
-    },
-    prompt: "select_account"
-  };
   try {
-    await msalInstance.loginRedirect(requestWithHint)
+    await msalInstance.loginRedirect(loginRequest)
   } catch (error) {
     console.error("導向登入失敗:", error)
     isLoading.value = false // 只有失敗才需要手動關閉 Loading，成功的話頁面就跳轉了
